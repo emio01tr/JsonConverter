@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest   # ✅ WinForms için Windows runner
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -27,11 +27,10 @@ jobs:
     - name: Publish
       run: dotnet publish -c Release -o publish
 
-    # ✅ Versiyon bilgisini al (varsa csproj’dan, yoksa fallback run number)
     - name: Get project version
       id: get_version
       run: |
-        $csproj = Get-ChildItem -Path JsonConverter -Filter *.csproj | Select-Object -First 1
+        $csproj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
         $versionNode = Select-Xml -Path $csproj.FullName -XPath "//Version" | ForEach-Object { $_.Node.InnerText }
         if ([string]::IsNullOrEmpty($versionNode)) {
           $versionNode = "1.0.${{ github.run_number }}"

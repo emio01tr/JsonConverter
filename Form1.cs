@@ -7,6 +7,9 @@ using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using OfficeOpenXml; // EPPlus kütüphanesi
 using System.Globalization;
+using System.Text;
+using System.Runtime.InteropServices;
+using JsonConverter;
 
 namespace ProductJsonExporter
 {
@@ -19,12 +22,12 @@ namespace ProductJsonExporter
 
         private void btnSelectFile_Click(object sender, EventArgs e)
         {
-            if(!checkBox1.Checked && string.IsNullOrEmpty(textBox1.Text))
+            if (!checkBox1.Checked && string.IsNullOrEmpty(textBox1.Text))
             {
-                MessageBox.Show("Ürünlerin grup fiyatý mý yoksa maðaza fiyatý mý olduðu belirtilmelidir.!",btnSelectFile.Text);
+                MessageBox.Show("Ürünlerin grup fiyatý mý yoksa maðaza fiyatý mý olduðu belirtilmelidir.!", btnSelectFile.Text);
                 return;
             }
-            
+
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Excel Files|*.xlsx;*.xls";
 
@@ -54,7 +57,7 @@ namespace ProductJsonExporter
             throw new Exception($"Geçersiz fiyat formatý: {input}");
         }
 
-        private void ProcessExcelFile(string path)
+        private async void ProcessExcelFile(string path)
         {
             string storeCode = textBox1.Text;
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -85,7 +88,7 @@ namespace ProductJsonExporter
                         continue;
                     }
 
-                        decimal price;
+                    decimal price;
                     decimal secondPrice = 0;
 
                     try
@@ -111,7 +114,7 @@ namespace ProductJsonExporter
                             shortName = name.Length > 25 ? name.Substring(0, 25) : name
                         });
 
-                        if(!string.IsNullOrEmpty(storeCode))
+                        if (!string.IsNullOrEmpty(storeCode))
                         {
                             prices.Add(new Price
                             {
@@ -121,18 +124,18 @@ namespace ProductJsonExporter
                                 price2 = secondPrice
                             });
                         }
-                        if(checkBox1.Checked)
+                        if (checkBox1.Checked)
                         {
                             groupPrices.Add(new GroupPrice
                             {
                                 code = code,
-                                groupId = 1, 
+                                groupId = 1,
                                 price = price,
                                 price2 = secondPrice
                             });
                         }
 
-                        
+
 
                         seenProductCodes.Add(code);
                     }
@@ -159,6 +162,32 @@ namespace ProductJsonExporter
                 };
 
                 string json = JsonSerializer.Serialize(result, options);
+
+                if (!string.IsNullOrEmpty(requesturl.Text))
+                {
+                    using (var progress = new ProgressForm())
+                    {
+                        progress.Show(this);
+                        await Task.Delay(2500);
+
+                        var token = await GetToken();
+                        var productResponse = await SendProducts(token, json);
+
+                        if (productResponse)
+                        {
+                            progress.Close();
+                            MessageBox.Show(this,$"Ürünler belirtilen adrese baþarýlý ile gönderildi. Url: {requesturl.Text}", "Baþarýlý");
+                        }
+                        else
+                        {
+                            progress.Close();
+                            MessageBox.Show(this,$"Hata: Url bilgisini tekrar kontrol edin. Url: {requesturl.Text}", "Hata!");
+                        }
+                    }
+
+                }
+
+
                 string outputDirectory = "C:\\JsonConverter";
                 Directory.CreateDirectory(outputDirectory);
                 string outputPath = Path.Combine(outputDirectory, "converted_output.json");
@@ -171,73 +200,122 @@ namespace ProductJsonExporter
         private void MainForm_Load(object sender, EventArgs e)
         {
         }
-    }
 
-    public class Product
-    {
-        public int id { get; set; }
-        public string code { get; set; }
-        public string name { get; set; }
-        public string shortName { get; set; }
-        public string unitCode { get; set; } = "AD";
-        public int vatPercent { get; set; } = 10;
-        public int vatId { get; set; } = 5;
-        public int buyingVatPercent { get; set; } = 10;
-        public int buyingVatId { get; set; } = 5;
-        public bool isActive { get; set; } = true;
-        public bool isGivesBonus { get; set; } = true;
-        public int bonusMultiplier { get; set; } = 0;
-        public int priceEntryType { get; set; } = 0;
-        public int returnType { get; set; } = 1;
-        public int quantityType { get; set; } = 0;
-        public int discountType { get; set; } = 1;
-        public int scaleType { get; set; } = 0;
-        public int currneysTypeId { get; set; } = 1;
-        public int salesmanSetting { get; set; } = 0;
-        public bool isLunchVoucher { get; set; } = true;
-        public int installmentNumber { get; set; } = 0;
-        public int installmentType { get; set; } = 0;
-        public string description { get; set; } = "";
-        public int productType { get; set; } = 0;
-        public int salesInformationsId { get; set; } = 0;
-        public int maxQuantity { get; set; } = 0;
-    }
 
-    public class Barcode
-    {
-        public string code { get; set; }
-        public string barcode { get; set; }
-        public string unitCode { get; set; } = "AD";
-        public int priceId { get; set; } = 0;
-        public int quantity { get; set; } = 1;
-    }
+        public async Task<string> GetToken()
+        {
 
-    public class Price
-    {
-        public string code { get; set; }
-        public string storeCode { get; set; }
-        public int priceId { get; set; } = 0;
-        public decimal price { get; set; }
-        public decimal price2 { get; set; } = 0;
-        public decimal price3 { get; set; } = 0;
-        public decimal price4 { get; set; } = 0;
-        public decimal price5 { get; set; } = 0;
-        public bool isActive { get; set; } = true;
-        public object nextPrices { get; set; } = new { };
-        public int maxQuantity { get; set; } = 0;
-        public bool isOnSale { get; set; } = true;
-    }
+            TokenBody tokenBody = new();
+            string tokenJson = JsonSerializer.Serialize(tokenBody);
+            var tokenUrl = $"{requesturl.Text}";
+            var tokenEndpoint = "token";
+            var tokenContent = new StringContent(tokenJson, Encoding.UTF8, "application/json");
 
-    public class GroupPrice
-    {
-        public string code { get; set; }
-        public int groupId { get; set; }
-        public int priceId { get; set; } = 0;
-        public decimal price { get; set; }
-        public decimal price2 { get; set; } = 0;
-        public decimal price3 { get; set; } = 0;
-        public decimal price4 { get; set; } = 0;
-        public decimal price5 { get; set; } = 0;
-        public object nextPrices { get; set; } = new { };
+            HttpClient tokenClient = new HttpClient();
+            tokenClient.BaseAddress = new Uri(tokenUrl);
+            tokenClient.Timeout = TimeSpan.FromSeconds(30);
+
+            var tokenResponse = await tokenClient.PostAsync(tokenEndpoint, tokenContent);
+
+            if (tokenResponse != null)
+            {
+                var token = await tokenResponse.Content.ReadAsStringAsync();
+                return token.Trim('"');
+            }
+            return "";
+        }
+        public async Task<bool> SendProducts(string token, string json)
+        {
+            var url = $"{requesturl.Text}";
+            HttpClient client = new HttpClient();
+            client.BaseAddress = new Uri(url);
+            client.Timeout = TimeSpan.FromSeconds(150);
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("/api/Product/add-bulk", httpContent);
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public class Product
+        {
+            public int id { get; set; }
+            public string code { get; set; }
+            public string name { get; set; }
+            public string shortName { get; set; }
+            public string unitCode { get; set; } = "AD";
+            public int vatPercent { get; set; } = 10;
+            public int vatId { get; set; } = 5;
+            public int buyingVatPercent { get; set; } = 10;
+            public int buyingVatId { get; set; } = 5;
+            public bool isActive { get; set; } = true;
+            public bool isGivesBonus { get; set; } = true;
+            public int bonusMultiplier { get; set; } = 0;
+            public int priceEntryType { get; set; } = 0;
+            public int returnType { get; set; } = 1;
+            public int quantityType { get; set; } = 0;
+            public int discountType { get; set; } = 1;
+            public int scaleType { get; set; } = 0;
+            public int currneysTypeId { get; set; } = 1;
+            public int salesmanSetting { get; set; } = 0;
+            public bool isLunchVoucher { get; set; } = true;
+            public int installmentNumber { get; set; } = 0;
+            public int installmentType { get; set; } = 0;
+            public string description { get; set; } = "";
+            public int productType { get; set; } = 0;
+            public int salesInformationsId { get; set; } = 0;
+            public int maxQuantity { get; set; } = 0;
+        }
+
+        public class Barcode
+        {
+            public string code { get; set; }
+            public string barcode { get; set; }
+            public string unitCode { get; set; } = "AD";
+            public int priceId { get; set; } = 0;
+            public int quantity { get; set; } = 1;
+        }
+
+        public class Price
+        {
+            public string code { get; set; }
+            public string storeCode { get; set; }
+            public int priceId { get; set; } = 0;
+            public decimal price { get; set; }
+            public decimal price2 { get; set; } = 0;
+            public decimal price3 { get; set; } = 0;
+            public decimal price4 { get; set; } = 0;
+            public decimal price5 { get; set; } = 0;
+            public bool isActive { get; set; } = true;
+            public object nextPrices { get; set; } = new { };
+            public int maxQuantity { get; set; } = 0;
+            public bool isOnSale { get; set; } = true;
+        }
+
+        public class GroupPrice
+        {
+            public string code { get; set; }
+            public int groupId { get; set; }
+            public int priceId { get; set; } = 0;
+            public decimal price { get; set; }
+            public decimal price2 { get; set; } = 0;
+            public decimal price3 { get; set; } = 0;
+            public decimal price4 { get; set; } = 0;
+            public decimal price5 { get; set; } = 0;
+            public object nextPrices { get; set; } = new { };
+        }
+
+        public class TokenBody
+        {
+            public string grant_type { get; set; } = "password";
+            public string username { get; set; } = "kasa";
+            public string password { get; set; } = "81dc9bdb52d04dc20036dbd8313ed055";
+        }
     }
 }

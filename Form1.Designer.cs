@@ -19,11 +19,13 @@
             label1 = new Label();
             checkBox1 = new CheckBox();
             label2 = new Label();
+            label3 = new Label();
+            requesturl = new TextBox();
             SuspendLayout();
             // 
             // btnSelectFile
             // 
-            btnSelectFile.Location = new Point(135, 134);
+            btnSelectFile.Location = new Point(135, 167);
             btnSelectFile.Margin = new Padding(3, 4, 3, 4);
             btnSelectFile.Name = "btnSelectFile";
             btnSelectFile.Size = new Size(217, 54);
@@ -36,7 +38,7 @@
             // 
             textBox1.Location = new Point(227, 100);
             textBox1.Name = "textBox1";
-            textBox1.Size = new Size(125, 27);
+            textBox1.Size = new Size(254, 27);
             textBox1.TabIndex = 1;
             // 
             // label1
@@ -66,11 +68,30 @@
             label2.TabIndex = 4;
             label2.Text = "Grup Fiyatı Aktif Mi?";
             // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new Point(135, 136);
+            label3.Name = "label3";
+            label3.Size = new Size(85, 20);
+            label3.TabIndex = 5;
+            label3.Text = "Request Url";
+            // 
+            // requesturl
+            // 
+            requesturl.Location = new Point(227, 133);
+            requesturl.Name = "requesturl";
+            requesturl.Size = new Size(254, 27);
+            requesturl.TabIndex = 6;
+            requesturl.Text = "http://192.168.89.99:9996";
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(547, 308);
+            Controls.Add(requesturl);
+            Controls.Add(label3);
             Controls.Add(label2);
             Controls.Add(checkBox1);
             Controls.Add(label1);
@@ -88,5 +109,7 @@
         private Label label1;
         private CheckBox checkBox1;
         private Label label2;
+        private Label label3;
+        private TextBox requesturl;
     }
 }

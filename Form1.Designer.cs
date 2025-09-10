@@ -14,28 +14,79 @@
 
         private void InitializeComponent()
         {
-            this.btnSelectFile = new System.Windows.Forms.Button();
-            this.SuspendLayout();
+            btnSelectFile = new Button();
+            textBox1 = new TextBox();
+            label1 = new Label();
+            checkBox1 = new CheckBox();
+            label2 = new Label();
+            SuspendLayout();
             // 
             // btnSelectFile
             // 
-            this.btnSelectFile.Location = new System.Drawing.Point(30, 30);
-            this.btnSelectFile.Name = "btnSelectFile";
-            this.btnSelectFile.Size = new System.Drawing.Size(200, 40);
-            this.btnSelectFile.TabIndex = 0;
-            this.btnSelectFile.Text = "Excel Dosyası Seç";
-            this.btnSelectFile.UseVisualStyleBackColor = true;
-            this.btnSelectFile.Click += new System.EventHandler(this.btnSelectFile_Click);
+            btnSelectFile.Location = new Point(135, 134);
+            btnSelectFile.Margin = new Padding(3, 4, 3, 4);
+            btnSelectFile.Name = "btnSelectFile";
+            btnSelectFile.Size = new Size(217, 54);
+            btnSelectFile.TabIndex = 0;
+            btnSelectFile.Text = "Excel Dosyası Seç";
+            btnSelectFile.UseVisualStyleBackColor = true;
+            btnSelectFile.Click += btnSelectFile_Click;
+            // 
+            // textBox1
+            // 
+            textBox1.Location = new Point(227, 100);
+            textBox1.Name = "textBox1";
+            textBox1.Size = new Size(125, 27);
+            textBox1.TabIndex = 1;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(135, 103);
+            label1.Name = "label1";
+            label1.Size = new Size(86, 20);
+            label1.TabIndex = 2;
+            label1.Text = "StoreCode :";
+            // 
+            // checkBox1
+            // 
+            checkBox1.AutoSize = true;
+            checkBox1.Location = new Point(293, 77);
+            checkBox1.Name = "checkBox1";
+            checkBox1.Size = new Size(18, 17);
+            checkBox1.TabIndex = 3;
+            checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(135, 74);
+            label2.Name = "label2";
+            label2.Size = new Size(143, 20);
+            label2.TabIndex = 4;
+            label2.Text = "Grup Fiyatı Aktif Mi?";
             // 
             // MainForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(280, 100);
-            this.Controls.Add(this.btnSelectFile);
-            this.Name = "MainForm";
-            this.Text = "JSON Dönüştürücü";
-            this.ResumeLayout(false);
+            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(547, 308);
+            Controls.Add(label2);
+            Controls.Add(checkBox1);
+            Controls.Add(label1);
+            Controls.Add(textBox1);
+            Controls.Add(btnSelectFile);
+            Margin = new Padding(3, 4, 3, 4);
+            Name = "MainForm";
+            Text = "JSON Dönüştürücü";
+            Load += MainForm_Load;
+            ResumeLayout(false);
+            PerformLayout();
         }
+
+        private TextBox textBox1;
+        private Label label1;
+        private CheckBox checkBox1;
+        private Label label2;
     }
 }

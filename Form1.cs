@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using OfficeOpenXml; // EPPlus kütüphanesi
+using System.Globalization;
+
 namespace ProductJsonExporter
 {
     public partial class MainForm : Form
@@ -19,6 +19,12 @@ namespace ProductJsonExporter
 
         private void btnSelectFile_Click(object sender, EventArgs e)
         {
+            if(!checkBox1.Checked && string.IsNullOrEmpty(textBox1.Text))
+            {
+                MessageBox.Show("Ürünlerin grup fiyatý mý yoksa maðaza fiyatý mý olduðu belirtilmelidir.!",btnSelectFile.Text);
+                return;
+            }
+            
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Excel Files|*.xlsx;*.xls";
 
@@ -29,8 +35,28 @@ namespace ProductJsonExporter
             }
         }
 
+        private decimal ParseDecimal(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return 0;
+
+            decimal value;
+
+            // Önce TR formatý
+            if (decimal.TryParse(input, NumberStyles.Any, CultureInfo.GetCultureInfo("tr-TR"), out value))
+                return value;
+
+            // Nokta varsa virgüle çevirip tekrar dene
+            string normalized = input.Replace(".", ",");
+            if (decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.GetCultureInfo("tr-TR"), out value))
+                return value;
+
+            throw new Exception($"Geçersiz fiyat formatý: {input}");
+        }
+
         private void ProcessExcelFile(string path)
         {
+            string storeCode = textBox1.Text;
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
             using (var package = new ExcelPackage(new FileInfo(path)))
@@ -41,17 +67,39 @@ namespace ProductJsonExporter
                 var products = new List<Product>();
                 var barcodes = new List<Barcode>();
                 var prices = new List<Price>();
+                var groupPrices = new List<GroupPrice>();
 
                 var seenProductCodes = new HashSet<string>();
 
                 for (int row = 2; row <= rowCount; row++)
                 {
+
                     string code = worksheet.Cells[row, 1].Text; // Artikel
                     string barcode = worksheet.Cells[row, 2].Text; // Barkod
                     string name = worksheet.Cells[row, 3].Text; // Taným
                     string priceStr = worksheet.Cells[row, 4].Text; // Stþ.Fyt.
+                    string secondPriceStr = worksheet.Cells[row, 5].Text ?? ""; // ikinci fiyat
 
-                    if (!decimal.TryParse(priceStr, out decimal price)) continue;
+                    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(barcode))
+                    {
+                        continue;
+                    }
+
+                        decimal price;
+                    decimal secondPrice = 0;
+
+                    try
+                    {
+                        price = ParseDecimal(priceStr);
+
+                        if (!string.IsNullOrEmpty(secondPriceStr))
+                            secondPrice = ParseDecimal(secondPriceStr);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Satýr {row} -> {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        break;
+                    }
 
                     if (!seenProductCodes.Contains(code))
                     {
@@ -62,12 +110,30 @@ namespace ProductJsonExporter
                             name = name,
                             shortName = name.Length > 25 ? name.Substring(0, 25) : name
                         });
-                        prices.Add(new Price
+
+                        if(!string.IsNullOrEmpty(storeCode))
                         {
-                            code = code,
-                            storeCode = "1057",
-                            price = price
-                        });
+                            prices.Add(new Price
+                            {
+                                code = code,
+                                storeCode = $"{storeCode}",
+                                price = price,
+                                price2 = secondPrice
+                            });
+                        }
+                        if(checkBox1.Checked)
+                        {
+                            groupPrices.Add(new GroupPrice
+                            {
+                                code = code,
+                                groupId = 1, 
+                                price = price,
+                                price2 = secondPrice
+                            });
+                        }
+
+                        
+
                         seenProductCodes.Add(code);
                     }
 
@@ -82,20 +148,28 @@ namespace ProductJsonExporter
                 {
                     products = products,
                     barcodes = barcodes,
-                    prices = prices
+                    prices = prices,
+                    groupPrices = groupPrices
                 };
+
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
                 };
+
                 string json = JsonSerializer.Serialize(result, options);
                 string outputDirectory = "C:\\JsonConverter";
                 Directory.CreateDirectory(outputDirectory);
                 string outputPath = Path.Combine(outputDirectory, "converted_output.json");
                 File.WriteAllText(outputPath, json);
-                MessageBox.Show($"JSON dosyasý baþarýyla oluþturuldu! \n\n{outputPath}", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+
+            MessageBox.Show($"JSON dosyasý baþarýyla oluþturuldu! \n\n", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
         }
     }
 
@@ -152,5 +226,18 @@ namespace ProductJsonExporter
         public object nextPrices { get; set; } = new { };
         public int maxQuantity { get; set; } = 0;
         public bool isOnSale { get; set; } = true;
+    }
+
+    public class GroupPrice
+    {
+        public string code { get; set; }
+        public int groupId { get; set; }
+        public int priceId { get; set; } = 0;
+        public decimal price { get; set; }
+        public decimal price2 { get; set; } = 0;
+        public decimal price3 { get; set; } = 0;
+        public decimal price4 { get; set; } = 0;
+        public decimal price5 { get; set; } = 0;
+        public object nextPrices { get; set; } = new { };
     }
 }

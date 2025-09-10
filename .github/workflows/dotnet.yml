@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -27,11 +27,21 @@ jobs:
     - name: Publish
       run: dotnet publish -c Release -o publish
 
+    - name: Get project version
+      id: get_version
+      run: |
+        $csproj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+        $versionNode = Select-Xml -Path $csproj.FullName -XPath "//Version" | ForEach-Object { $_.Node.InnerText }
+        if ([string]::IsNullOrEmpty($versionNode)) {
+          $versionNode = "1.0.${{ github.run_number }}"
+        }
+        echo "VERSION=$versionNode" >> $env:GITHUB_ENV
+
     - name: Zip artifact
-      run: zip -r app_build.zip publish
+      run: Compress-Archive -Path publish -DestinationPath app_build-${{ env.VERSION }}.zip -Force
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app_build
-        path: app_build.zip
+        name: app_build-${{ env.VERSION }}
+        path: app_build-${{ env.VERSION }}.zip
